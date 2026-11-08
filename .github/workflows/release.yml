@@ -52,6 +52,7 @@ jobs:
       # tauri build downloads bundler tools (NSIS, AppRun, etc.) from GitHub's
       # CDN, which intermittently 504s — retry 3x before giving up
       - name: Build bundles (retry on CDN hiccups)
+        shell: bash
         run: |
           for attempt in 1 2 3; do
             echo "== build attempt $attempt =="
