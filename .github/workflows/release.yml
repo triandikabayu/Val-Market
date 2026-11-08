@@ -124,7 +124,42 @@ jobs:
       - name: Init Android project
         run: npx tauri android init
 
+      # The gradle wrapper downloads the distribution with a hard 10s timeout,
+      # which fails for a 130MB zip. Prefetch it with curl (real retries +
+      # generous timeout) and point the wrapper at the local file. If curl
+      # itself keeps failing, at least raise the wrapper's timeout.
+      - name: Prefetch Gradle distribution
+        shell: bash
+        run: |
+          PROPS="gen/android/gradle/wrapper/gradle-wrapper.properties"
+          URL=$(grep '^distributionUrl' "$PROPS" | cut -d'=' -f2-)
+          echo "distribution: $URL"
+          mkdir -p gen/android/gradle-local
+          ok=""
+          for i in 1 2 3 4 5; do
+            echo "== curl attempt $i =="
+            if curl -L --fail --retry 2 --connect-timeout 20 --max-time 900 \
+                 -o gen/android/gradle-local/gradle.zip "$URL"; then
+              ok=1
+              break
+            fi
+            sleep 20
+          done
+          if [ -n "$ok" ]; then
+            sed -i "s|^distributionUrl=.*|distributionUrl=file:///${GITHUB_WORKSPACE}/gen/android/gradle-local/gradle.zip|" "$PROPS"
+            echo "wrapper now uses the local zip:"
+            grep distributionUrl "$PROPS"
+          else
+            {
+              echo "org.gradle.internal.http.connectionTimeout=180000"
+              echo "org.gradle.internal.http.socketTimeout=180000"
+            } >> gen/android/gradle.properties
+            echo "prefetch failed — raised wrapper timeouts to 180s instead"
+            grep distributionUrl "$PROPS"
+          fi
+
       - name: Build Android APK (retry — gradle.org CDN occasionally 504s)
+        shell: bash
         run: |
           for attempt in 1 2 3; do
             echo "== gradle attempt $attempt =="
