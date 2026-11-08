@@ -79,6 +79,9 @@ jobs:
         with:
           packages: "ndk;27.0.12077973"
 
+      - name: Export NDK_HOME (required by Tauri)
+        run: echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
+
       - run: npm ci
 
       - name: Init + build Android APK (debug — installable without signing)
