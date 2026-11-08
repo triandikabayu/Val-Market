@@ -131,29 +131,30 @@ jobs:
       - name: Prefetch Gradle distribution
         shell: bash
         run: |
-          PROPS="gen/android/gradle/wrapper/gradle-wrapper.properties"
+          PROPS="src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties"
+          test -f "$PROPS" || { echo "wrapper properties missing:"; find src-tauri/gen -maxdepth 4 -name '*.properties' || true; exit 1; }
           URL=$(grep '^distributionUrl' "$PROPS" | cut -d'=' -f2-)
           echo "distribution: $URL"
-          mkdir -p gen/android/gradle-local
+          mkdir -p src-tauri/gen/android/gradle-local
           ok=""
           for i in 1 2 3 4 5; do
             echo "== curl attempt $i =="
             if curl -L --fail --retry 2 --connect-timeout 20 --max-time 900 \
-                 -o gen/android/gradle-local/gradle.zip "$URL"; then
+                 -o src-tauri/gen/android/gradle-local/gradle.zip "$URL"; then
               ok=1
               break
             fi
             sleep 20
           done
           if [ -n "$ok" ]; then
-            sed -i "s|^distributionUrl=.*|distributionUrl=file:///${GITHUB_WORKSPACE}/gen/android/gradle-local/gradle.zip|" "$PROPS"
+            sed -i "s|^distributionUrl=.*|distributionUrl=file:///${GITHUB_WORKSPACE}/src-tauri/gen/android/gradle-local/gradle.zip|" "$PROPS"
             echo "wrapper now uses the local zip:"
             grep distributionUrl "$PROPS"
           else
             {
               echo "org.gradle.internal.http.connectionTimeout=180000"
               echo "org.gradle.internal.http.socketTimeout=180000"
-            } >> gen/android/gradle.properties
+            } >> src-tauri/gen/android/gradle.properties
             echo "prefetch failed — raised wrapper timeouts to 180s instead"
             grep distributionUrl "$PROPS"
           fi
@@ -175,14 +176,14 @@ jobs:
         run: |
           mkdir -p artifacts
           echo "APKs found:"
-          find gen/android -name '*.apk' -type f || true
-          APK=$(find gen/android -name '*universal*.apk' -type f | head -n 1)
+          find src-tauri/gen/android -name '*.apk' -type f || true
+          APK=$(find src-tauri/gen/android -name '*universal*.apk' -type f | head -n 1)
           if [ -z "$APK" ]; then
-            APK=$(find gen/android -name '*.apk' -type f | head -n 1)
+            APK=$(find src-tauri/gen/android -name '*.apk' -type f | head -n 1)
           fi
           if [ -z "$APK" ]; then
             echo "No APK produced — build outputs:"
-            find gen/android/app/build/outputs -type f 2>/dev/null || true
+            find src-tauri/gen/android/app/build/outputs -type f 2>/dev/null || true
             exit 1
           fi
           echo "Using: $APK"
