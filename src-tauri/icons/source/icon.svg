@@ -1,0 +1,10 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- val//market app mark: navy field, red double-slash (matches dashboard wordmark) -->
+  <rect width="1024" height="1024" fill="#0F1923"/>
+  <!-- faint off-white floor line, echoes the dashboard's topbar divider -->
+  <rect x="0" y="812" width="1024" height="8" fill="#2A3743"/>
+  <!-- slash 1 -->
+  <path d="M 408 260 L 508 260 L 408 724 L 308 724 Z" fill="#FF4655"/>
+  <!-- slash 2, pressed tone for depth -->
+  <path d="M 588 260 L 688 260 L 588 724 L 488 724 Z" fill="#E03A48"/>
+</svg>

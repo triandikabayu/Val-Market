@@ -1,0 +1,25 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "enables the default permissions",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://auth.riotgames.com" },
+        { "url": "https://auth.riotgames.com/**" },
+        { "url": "https://entitlements.auth.riotgames.com" },
+        { "url": "https://entitlements.auth.riotgames.com/**" },
+        { "url": "https://pd.*.a.pvp.net" },
+        { "url": "https://pd.*.a.pvp.net/**" },
+        { "url": "https://valorant-api.com" },
+        { "url": "https://valorant-api.com/**" }
+      ]
+    }
+  ]
+}

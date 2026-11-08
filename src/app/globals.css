@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0f1923;
+  --color-surface: #141e28;
+  --color-surface-2: #1b2733;
+  --color-line: #2a3743;
+  --color-ink: #ece8e1;
+  --color-ink-muted: #a9afb4;
+  --color-accent: #ff4655;
+  --color-accent-hover: #ff5b67;
+  --color-accent-press: #e03a48;
+  --color-on-accent: #0f1923;
+  --color-danger: #ff6b6b;
+  --color-success: #5fd9a4;
+
+  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Anton", "DM Sans Variable", ui-sans-serif, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+}
+
+:root {
+  --z-sticky: 10;
+  --z-dropdown: 20;
+  --z-dialog-backdrop: 30;
+  --z-dialog: 40;
+  --z-toast: 50;
+  --ease-out-quart: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+/* Signature angular cut: primary CTA and featured surfaces only */
+.clip-corner {
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+}
+
+@keyframes shake {
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.form-error {
+  animation: shake 0.12s ease-in-out 2;
+}
+
+/* Store grid resolve: skeletons → cards rise in with a sibling stagger */
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.skin-card {
+  animation: card-in 0.45s var(--ease-out-quart) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+  transition:
+    transform 0.2s var(--ease-out-quart),
+    border-color 0.2s var(--ease-out-quart);
+}
+
+.skin-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--color-ink-muted);
+}
+
+.skin-card .skin-art {
+  opacity: 0;
+  transform: scale(1.01);
+  transition:
+    opacity 0.3s var(--ease-out-quart),
+    transform 0.45s var(--ease-out-quart);
+}
+
+.skin-card .skin-art.is-loaded {
+  opacity: 1;
+  transform: none;
+}
+
+.skin-card:hover .skin-art.is-loaded {
+  transform: scale(1.04);
+}
+
+/* Skeleton shimmer: compositor-only sweep (transform), bounded to the block */
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(236, 232, 225, 0.07),
+    transparent
+  );
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form-error {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+dialog.two-fa {
+  z-index: var(--z-dialog);
+}
+
+dialog.two-fa::backdrop {
+  background: rgba(15, 25, 35, 0.7);
+}
