@@ -131,8 +131,17 @@ jobs:
       - name: Prefetch Gradle distribution
         shell: bash
         run: |
+          # ALWAYS raise the wrapper's download timeouts in the PROJECT
+          # gradle.properties — the tauri CLI regenerates gradle-wrapper
+          # properties on every build, so patching that file alone is not
+          # durable. These properties are what the 10s default comes from.
+          GRADLE_PROPS="src-tauri/gen/android/gradle.properties"
+          grep -q "org.gradle.internal.http.socketTimeout" "$GRADLE_PROPS" 2>/dev/null || {
+            echo "org.gradle.internal.http.connectionTimeout=120000" >> "$GRADLE_PROPS"
+            echo "org.gradle.internal.http.socketTimeout=120000" >> "$GRADLE_PROPS"
+          }
+
           PROPS="src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties"
-          test -f "$PROPS" || { echo "wrapper properties missing:"; find src-tauri/gen -maxdepth 4 -name '*.properties' || true; exit 1; }
           URL=$(grep '^distributionUrl' "$PROPS" | cut -d'=' -f2-)
           echo "distribution: $URL"
           mkdir -p src-tauri/gen/android/gradle-local
@@ -151,11 +160,7 @@ jobs:
             echo "wrapper now uses the local zip:"
             grep distributionUrl "$PROPS"
           else
-            {
-              echo "org.gradle.internal.http.connectionTimeout=180000"
-              echo "org.gradle.internal.http.socketTimeout=180000"
-            } >> src-tauri/gen/android/gradle.properties
-            echo "prefetch failed — raised wrapper timeouts to 180s instead"
+            echo "prefetch failed — relying on the 120s wrapper timeouts"
             grep distributionUrl "$PROPS"
           fi
 
