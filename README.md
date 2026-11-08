@@ -1,59 +1,94 @@
-# val-market
+<div align="center">
 
-Valorant daily store checker — see your full in-game store (daily skins, bundle, accessories, night market) without launching the game. Desktop app (Tauri v2): login happens on Riot's official page in a native webview — captcha and all social platform sign-ins (Google/Facebook/Apple/Xbox/PSN) work; tokens are captured from the redirect and never stored.
+<img src="src-tauri/icons/128x128.png" width="128" alt="val//market">
 
-**Status:** Phase 0–2 built (Tauri shell + login). Read [docs/PLAN.md](docs/PLAN.md) before executing anything.
+# val//market
 
-## Prerequisites
+**Your Valorant store, without the game.**
 
-- Node.js + npm
-- Rust toolchain (`brew install rust`, or https://rustup.rs)
-- Android builds: Android Studio + JDK · iOS builds: full Xcode + Apple Developer account
+A small desktop app that shows everything the in-game store has on rotation
+for your account: daily skins, bundles, accessories, and the night market,
+with real prices and a countdown to the next reset.
 
-## Commands
+</div>
 
-- `npm run tauri dev` — run the full desktop app in dev
-- `npm run dev` — UI only in a browser tab (login won't work there; UI iteration only)
-- `npm run build` — static export to `out/`
-- `npm run typecheck` — TypeScript check
-- `npm run verify` — pure-logic self-check (fixture-based, no network)
-- `npm run tauri build` — native installer (`.dmg`/`.app` on macOS; `.msi` on Windows; `.deb`/`AppImage` on Linux)
-- Mobile (needs the toolchains above): `npx tauri ios init` / `npx tauri android init`, then `tauri ios build` / `tauri android build`
-- Releases: push a `v*` tag with `.github/workflows/release.yml` present → CI builds macOS (ARM+Intel) / Windows / Linux installers automatically
+---
+
+## The problem it solves
+
+You want to know if today's rotation is worth logging in for. Opening VALORANT
+takes a minute, and on a work laptop it's not even an option. val-market asks
+Riot's own servers what's in your store, then gets out of the way.
+
+## What it does
+
+**Daily store** — the four rotating skin offers, each with its rarity tier,
+price in VP, and a live countdown to the reset.
+
+**Bundles** — every bundle currently on sale, with banner art, full contents,
+per-item prices, and its own timer.
+
+**Accessories** — gun buddies, player cards, sprays, and titles, priced in
+Kingdom Credits.
+
+**Night market** — discounted skins with the original price struck through
+when the event is live, and an honest empty state when it isn't.
+
+**Zero config** — no region picker. The app reads your shard from Riot and
+corrects itself if Riot's answer doesn't match the store server.
+
+## How sign-in works
+
+You sign in on **Riot's own page**, inside a native window on desktop or your
+system browser on mobile. Captcha, two-factor authentication, and platform
+accounts (Google, Facebook, Apple, Xbox, PlayStation) all behave exactly like
+they do in the real client.
+
+This app never sees your password. Session tokens live in memory only and
+die the moment you close the window. Nothing is stored, logged, or sent
+anywhere except to Riot.
+
+One store fetch per sign-in. No polling, no automation, no background
+refresh.
 
 ## Platforms
 
-| Platform | Status |
+| Platform | How to get it |
 |---|---|
-| macOS (Apple Silicon) | built locally — `val-market_0.1.0_aarch64.dmg` |
-| macOS Intel / Windows / Linux | CI on tag push (`release.yml`) |
-| Android | CI on tag push (`release.yml`, android job) → debug APK artifact |
-| iOS | code-ready; final build needs local Xcode + Apple Developer account (see below) |
+| macOS (Apple Silicon) | build locally, or download the `.dmg` from Releases |
+| Windows | `.msi` installer via CI |
+| Linux | `.deb`, `.rpm`, or AppImage via CI |
+| Android | debug APK via CI |
+| iOS | build locally with Xcode (needs an Apple Developer account for real devices) |
 
-### iOS build (local)
+## Build it yourself
 
-1. Install full Xcode from the App Store, then `xcodebuild -version` works.
-2. Apple Developer account ($99/yr) is required to install on a real device (TestFlight or direct provisioning). The simulator works without it.
-3. `npx tauri ios init`, open `gen/apple/valmarket.xcodeproj` in Xcode, set your signing team, then Run — or `npx tauri ios build`.
-4. Login on iOS uses the paste-URL flow (the app opens Riot's sign-in in Safari; paste the redirected URL back).
+Prerequisites: Node.js, npm, and a Rust toolchain (`rustup.rs`).
 
-### Android build (local, optional — CI covers it)
+```bash
+npm install
+npm run tauri dev      # run the app in development
+npm run tauri build    # produce an installer
+npm run verify         # logic self-check, no network needed
+```
 
-1. Install Android Studio + JDK 17 (or cmdline-tools).
-2. `npx tauri android init` → `npx tauri android build --apk` (add `--debug` for an installable unsigned APK).
-3. Login on Android uses the same paste-URL flow.
+Continuous integration builds installers for every platform on version tags.
+See `.github/workflows/release.yml`.
+
+Android and iOS need their own toolchains: Android Studio + JDK 17, and
+Xcode with an Apple Developer account respectively.
 
 ## Disclaimers
 
 - Unofficial fan tool. Not affiliated with or endorsed by Riot Games.
 - Valorant and all related properties are trademarks of Riot Games, Inc.
-- Uses Riot's unofficial web endpoints; automated access sits outside Riot's ToS. The app fetches once per session and never automates.
-- Your credentials are typed into Riot's own hosted login page inside a native webview — this app never sees them. Tokens live in memory only.
+- Uses Riot's unofficial web endpoints. Automated access sits outside Riot's
+  ToS, so the app fetches once per session and never automates anything.
 - Store history is saved locally in your browser storage only.
 
 ## Docs
 
-- [PRODUCT.md](PRODUCT.md) — users, purpose, positioning, design principles
-- [DESIGN.md](DESIGN.md) — design system: tokens, type, components, motion
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — auth flow, endpoints, security, structure
-- [docs/PLAN.md](docs/PLAN.md) — phases, decisions, risks, definition of done
+- [PRODUCT.md](PRODUCT.md) — users, purpose, positioning
+- [DESIGN.md](DESIGN.md) — design system and tokens
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — login flow, endpoints, security
+- [docs/PLAN.md](docs/PLAN.md) — phases, decisions, risks
