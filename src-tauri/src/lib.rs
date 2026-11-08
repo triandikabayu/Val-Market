@@ -28,23 +28,39 @@ mod desktop_login {
     let (tx, rx) = mpsc::channel::<String>();
     let nav_app = app.clone();
 
-    let window =
-      WebviewWindowBuilder::new(&app, "riot-login", WebviewUrl::External(target))
-        .title("Sign in with Riot")
-        .inner_size(480.0, 740.0)
-        .min_inner_size(380.0, 560.0)
-        .on_navigation(move |nav| {
-          if nav.host_str() == Some("playvalorant.com") {
-            if let Some(fragment) = nav.fragment() {
-              let _ = tx.send(fragment.to_string());
-            }
-          }
-          // allow the navigation; the poll loop closes the window once it has
-          // the fragment (closing from inside the callback can deadlock macOS)
-          true
-        })
-        .build()
-        .map_err(|e| e.to_string())?;
+    // Build hidden on about:blank so we can wipe the previous Riot session
+    // (WKWebView's data store is app-persistent — without this, signing out
+    // and back in would auto-redirect as the previous account) and only then
+    // navigate + reveal.
+    let window = WebviewWindowBuilder::new(
+      &app,
+      "riot-login",
+      WebviewUrl::External(
+        "about:blank"
+          .parse::<tauri::Url>()
+          .map_err(|e| e.to_string())?,
+      ),
+    )
+    .title("Sign in with Riot")
+    .inner_size(480.0, 740.0)
+    .min_inner_size(380.0, 560.0)
+    .visible(false)
+    .on_navigation(move |nav| {
+      if nav.host_str() == Some("playvalorant.com") {
+        if let Some(fragment) = nav.fragment() {
+          let _ = tx.send(fragment.to_string());
+        }
+      }
+      // allow the navigation; the poll loop closes the window once it has
+      // the fragment (closing from inside the callback can deadlock macOS)
+      true
+    })
+    .build()
+    .map_err(|e| e.to_string())?;
+
+    let _ = window.clear_all_browsing_data();
+    window.navigate(target).map_err(|e| e.to_string())?;
+    let _ = window.show();
 
     let blocker = tauri::async_runtime::spawn_blocking(move || {
       let deadline = Instant::now() + Duration::from_secs(600);

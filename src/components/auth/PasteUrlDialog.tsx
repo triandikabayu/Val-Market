@@ -67,6 +67,10 @@ export function PasteUrlDialog({ open, onSubmit, onClose }: PasteUrlDialogProps)
         playvalorant.com&nbsp;page. Copy its full address from the address
         bar and paste it here.
       </p>
+      <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+        Switching accounts? Sign out of your Riot account in the browser
+        first — the browser keeps you signed in otherwise.
+      </p>
       <form
         className="mt-5"
         onSubmit={(e) => {
