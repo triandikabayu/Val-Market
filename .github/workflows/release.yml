@@ -22,12 +22,15 @@ jobs:
           - platform: macos-latest
             label: macos-intel
             args: "--target x86_64-apple-darwin"
+          # msi/deb/rpm bundle locally with zero tool downloads; NSIS and
+          # AppImage need extra files from GitHub's CDN, which intermittently
+          # 504s. Re-enable with `--bundles all` once the CDN behaves.
           - platform: windows-latest
             label: windows
-            args: ""
+            args: "--bundles msi"
           - platform: ubuntu-22.04
             label: linux
-            args: ""
+            args: "--bundles deb,rpm"
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -133,10 +136,22 @@ jobs:
           done
           exit 1
 
-      - name: Rename APK
+      - name: Collect APK
         run: |
           mkdir -p artifacts
-          cp gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk artifacts/val-market-android-debug.apk
+          echo "APKs found:"
+          find gen/android -name '*.apk' -type f || true
+          APK=$(find gen/android -name '*universal*.apk' -type f | head -n 1)
+          if [ -z "$APK" ]; then
+            APK=$(find gen/android -name '*.apk' -type f | head -n 1)
+          fi
+          if [ -z "$APK" ]; then
+            echo "No APK produced — build outputs:"
+            find gen/android/app/build/outputs -type f 2>/dev/null || true
+            exit 1
+          fi
+          echo "Using: $APK"
+          cp "$APK" artifacts/val-market-android-debug.apk
 
       - uses: actions/upload-artifact@v4
         with:
