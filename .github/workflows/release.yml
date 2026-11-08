@@ -84,10 +84,20 @@ jobs:
 
       - run: npm ci
 
-      - name: Init + build Android APK (debug — installable without signing)
+      - name: Init Android project
+        run: npx tauri android init
+
+      - name: Build Android APK (retry — gradle.org CDN occasionally 504s)
         run: |
-          npx tauri android init
-          npx tauri android build --apk --debug
+          for attempt in 1 2 3; do
+            echo "== gradle attempt $attempt =="
+            if npx tauri android build --apk --debug; then
+              exit 0
+            fi
+            echo "attempt $attempt failed, waiting before retry..."
+            sleep 30
+          done
+          exit 1
 
       - name: Rename APK
         run: |
