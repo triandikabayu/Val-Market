@@ -114,6 +114,68 @@ mod desktop_login {
   }
 }
 
+#[cfg(mobile)]
+mod mobile_login {
+  //! Mobile login: the app's main webview navigates to Riot's hosted sign-in
+  //! (captcha + social platforms all work — it's Riot's own domain), and a
+  //! poll loop brings the app back automatically once the redirect fragment
+  //! is seen. The fragment is parked in a static; the freshly-reloaded
+  //! frontend claims it via `riot_take_pending_fragment`.
+  use std::sync::Mutex;
+  use tauri::{AppHandle, Manager, Url};
+
+  pub static PENDING_FRAGMENT: Mutex<Option<String>> = Mutex::new(None);
+
+  const HOME_URL: &str = "tauri://localhost/";
+
+  #[tauri::command]
+  pub async fn riot_login_mobile_start(app: AppHandle, url: String) -> Result<(), String> {
+    let target = url.parse::<Url>().map_err(|e| e.to_string())?;
+    let main = app.get_webview_window("main").ok_or("main window not found")?;
+
+    *PENDING_FRAGMENT.lock().unwrap() = None;
+    main.navigate(target).map_err(|e| e.to_string())?;
+
+    // watch for the playvalorant.com redirect, then bring the app home
+    tauri::async_runtime::spawn_blocking(move || {
+      let deadline = std::time::Instant::now() + std::time::Duration::from_secs(600);
+      loop {
+        if std::time::Instant::now() >= deadline {
+          if let Ok(home) = Url::parse(HOME_URL) {
+            let _ = main.navigate(home);
+          }
+          return;
+        }
+        if let Ok(current) = main.url() {
+          if current.host_str() == Some("playvalorant.com") {
+            if let Some(fragment) = current.fragment() {
+              log::info!(
+                "[riot-login-mobile] captured fragment ({} chars)",
+                fragment.len()
+              );
+              *PENDING_FRAGMENT.lock().unwrap() = Some(fragment.to_string());
+            }
+            if let Ok(home) = Url::parse(HOME_URL) {
+              let _ = main.navigate(home);
+            }
+            return;
+          }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(300));
+      }
+    });
+    Ok(())
+  }
+
+  #[tauri::command]
+  pub fn riot_take_pending_fragment() -> Option<String> {
+    PENDING_FRAGMENT.lock().unwrap().take()
+  }
+}
+
+#[cfg(mobile)]
+pub use mobile_login::{riot_login_mobile_start, riot_take_pending_fragment};
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   let builder = tauri::Builder::default()
@@ -127,7 +189,14 @@ pub fn run() {
       debug_log
     ]);
 
-  #[cfg(not(desktop))]
+  #[cfg(mobile)]
+  let builder = builder.invoke_handler(tauri::generate_handler![
+    mobile_login::riot_login_mobile_start,
+    mobile_login::riot_take_pending_fragment,
+    debug_log
+  ]);
+
+  #[cfg(not(any(desktop, mobile)))]
   let builder =
     builder.invoke_handler(tauri::generate_handler![debug_log]);
 

@@ -33,7 +33,7 @@ export function SkinCard({ item, index = 0 }: { item: DailyItem; index?: number 
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
         <RarityTag tierName={item.tierName} />
-        <h3 className="text-base font-medium leading-snug text-ink">
+        <h3 className="break-words text-base font-medium leading-snug text-ink">
           {item.name}
         </h3>
         <p className="mt-auto flex items-baseline gap-1.5 font-mono text-sm text-ink">

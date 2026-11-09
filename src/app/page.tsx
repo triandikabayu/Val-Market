@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PasteUrlDialog } from "@/components/auth/PasteUrlDialog";
 import { PrivacyNote } from "@/components/auth/PrivacyNote";
 import { Wordmark } from "@/components/Wordmark";
@@ -37,6 +37,30 @@ export default function LoginPage() {
   );
   const [pasteOpen, setPasteOpen] = useState(false);
 
+  // Mobile: after the main webview returns from Riot's sign-in, the page
+  // reloads and the captured fragment is parked Rust-side — claim it here.
+  useEffect(() => {
+    if (!IS_MOBILE) return;
+    void (async () => {
+      try {
+        const { invoke } = await import("@tauri-apps/api/core");
+        const fragment = await invoke<string | null>("riot_take_pending_fragment");
+        if (!fragment) return;
+        setSubmitting("browser");
+        const outcome = await completeSignInFromUrl(fragment);
+        setSubmitting(null);
+        if (outcome.status === "ok") {
+          setSession(outcome.session);
+          router.replace("/store");
+        } else if (outcome.status === "error") {
+          setError({ code: outcome.code, detail: outcome.detail });
+        }
+      } catch {
+        /* not running inside Tauri */
+      }
+    })();
+  }, [router, setSession]);
+
   const afterOutcome = (
     outcome: Awaited<ReturnType<typeof signInWithRiot>>,
   ): void => {
@@ -62,11 +86,18 @@ export default function LoginPage() {
   const onMobileSignIn = async () => {
     if (submitting) return;
     setSubmitting("browser");
-    const { authorizeUrl } = await import("@/lib/riot/auth");
-    const { openUrl } = await import("@tauri-apps/plugin-opener");
-    await openUrl(authorizeUrl());
-    setSubmitting(null);
-    setPasteOpen(true);
+    setError(null);
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const { authorizeUrl } = await import("@/lib/riot/auth");
+      await invoke("riot_login_mobile_start", { url: authorizeUrl() });
+      // the main webview navigates away to Riot; on return the boot effect
+      // above completes the sign-in automatically
+    } catch (err) {
+      setSubmitting(null);
+      setError({ code: "unknown", detail: err instanceof Error ? err.message : "window open failed" });
+      setPasteOpen(true);
+    }
   };
 
   const onPasteSubmit = async (url: string): Promise<"ok" | "invalid"> => {
