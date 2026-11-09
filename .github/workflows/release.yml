@@ -166,12 +166,12 @@ jobs:
             grep distributionUrl "$PROPS"
           fi
 
-      - name: Build Android APK (retry — gradle.org CDN occasionally 504s)
+      - name: Build Android APKs (release, split per ABI)
         shell: bash
         run: |
           for attempt in 1 2 3; do
             echo "== gradle attempt $attempt =="
-            if npx tauri android build --apk --debug; then
+            if npx tauri android build --apk --split-per-abi; then
               exit 0
             fi
             echo "attempt $attempt failed, waiting before retry..."
@@ -179,22 +179,42 @@ jobs:
           done
           exit 1
 
-      - name: Collect APK
+      # Release APKs must be signed to be installable; use a self-signed
+      # keystore. ponytail: ephemeral keystore — installing a NEW release
+      # later may require uninstalling the old app first (different key).
+      # Commit a real keystore when distribution gets serious.
+      - name: Sign + collect APKs
+        shell: bash
         run: |
+          KS="$HOME/.android/valmarket.keystore"
+          if [ ! -f "$KS" ]; then
+            keytool -genkeypair -v -keystore "$KS" -alias valmarket \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass valmarket -keypass valmarket \
+              -dname "CN=val-market"
+          fi
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort | tail -n 1)
+          echo "using build-tools: $BT"
           mkdir -p artifacts
           echo "APKs found:"
           find src-tauri/gen/android -name '*.apk' -type f || true
-          APK=$(find src-tauri/gen/android -name '*universal*.apk' -type f | head -n 1)
-          if [ -z "$APK" ]; then
-            APK=$(find src-tauri/gen/android -name '*.apk' -type f | head -n 1)
-          fi
-          if [ -z "$APK" ]; then
-            echo "No APK produced — build outputs:"
-            find src-tauri/gen/android/app/build/outputs -type f 2>/dev/null || true
-            exit 1
-          fi
-          echo "Using: $APK"
-          cp "$APK" artifacts/val-market-android-debug.apk
+          for APK in $(find src-tauri/gen/android -name '*.apk' -type f); do
+            NAME=$(basename "$APK" .apk)
+            case "$NAME" in
+              *arm64-v8a*) LABEL="arm64-v8a";;
+              *armeabi*)   LABEL="armeabi-v7a";;
+              *x86_64*)    LABEL="x86_64";;
+              *x86*)       LABEL="x86";;
+              *)           LABEL="universal";;
+            esac
+            "$BT/zipalign" -f 4 "$APK" artifacts/tmp.apk
+            "$BT/apksigner" sign --ks "$KS" --ks-pass pass:valmarket \
+              --key-pass pass:valmarket \
+              --out "artifacts/val-market-android-${LABEL}.apk" artifacts/tmp.apk
+            "$BT/apksigner" verify "artifacts/val-market-android-${LABEL}.apk"
+            rm -f artifacts/tmp.apk
+          done
+          ls -la artifacts/
 
       - uses: actions/upload-artifact@v4
         with:
